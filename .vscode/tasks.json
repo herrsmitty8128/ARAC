@@ -7,7 +7,7 @@
             "label": "format python code",
             "type": "shell",
             "command": "autopep8",
-            "args":["--in-place", "--max-line-length", "250", "--aggressive", "--aggressive", "ARAnalysisCompiler.py", "app.py"],
+            "args":["--in-place", "--max-line-length", "250", "--aggressive", "--aggressive", "SpreadsheetTools.py", "ARAnalysisCompiler.py", "app.py"],
             "group": {
 				"kind": "build",
 				"isDefault": true

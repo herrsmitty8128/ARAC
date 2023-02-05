@@ -1,2 +1,4 @@
 Source Facility,Account Number,Financial Class Beginning,Financial Class Ending,ATB Date - Max,ATB Date - Min,Beginning AR Balance,Charges,Admin,Bad Debt,Charity,Contractuals,Denials,Payments,Ending AR Balance,Rollforward Check,MRA - Estimated Reserve Beginning,MRA - Estimated Reserve Ending
 Alexandria Hospital Parent, 1234567890, Medicare, Medicare,1/31/2023,12/31/2022,313133.29,25407.94,-11.44,0.0,0.0,-4393.1,-0.04,0.0,334136.65,0,218191.27,235699.99
+Alexandria Hospital Parent, 1234567890, Medicare, Medicare,1/31/2023,12/31/2022,-100000.0,25407.94,-11.44,0.0,0.0,-4393.1,-0.04,0.0,-78996.64,0,218191.27,235699.99
+Alexandria Hospital Parent, 1234567890, Medicare, Medicare,1/31/2023,12/31/2022,0.0,25407.94,-11.44,0.0,0.0,-4393.1,-0.04,0.0,21003.36,0,218191.27,235699.99
