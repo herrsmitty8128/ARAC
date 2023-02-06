@@ -124,24 +124,69 @@ class ARAnalysisCompiler:
 
     def split_into_cagetories(self, pt_accts: list[dict]) -> tuple:
 
+        new_balances = []
+        fully_reserved = []
+        partial_reserve = []
         credit_balances = []
-        debit_balances = []
         zero_balances = []
 
         # group the accounts into three categories
         for pt_acct in pt_accts:
             beg_bal = pt_acct['beg bal']
             if beg_bal > 0.0:
-                debit_balances.append(pt_acct)
+                if abs(beg_bal + pt_acct['rsv beg']) <= 1.0:
+                    fully_reserved.append(pt_acct)
+                else:
+                    partial_reserve.append(pt_acct)
             elif beg_bal < 0.0:
                 credit_balances.append(pt_acct)
             else:
-                zero_balances.append(pt_acct)
+                if pt_acct['charges'] > 0.0:
+                    new_balances.append(pt_acct)
+                else:
+                    zero_balances.append(pt_acct)
 
-        return (debit_balances, credit_balances, zero_balances)
+        return (new_balances, fully_reserved, partial_reserve, credit_balances, zero_balances)
+    
+    def apply_new_account_themes(self, new_accts: list[dict]) -> None:
+        for pt_acct in new_accts:
+            pt_acct['Charges Impact'] = pt_acct['charges'] + pt_acct['rsv charges'] + pt_acct['contra'] + pt_acct['rsv contra']
+            pt_acct['Admin Impact'] = pt_acct['admin'] + pt_acct['rsv admin']
+            pt_acct['BD Impact'] = pt_acct['bd'] + pt_acct['rsv bd']
+            pt_acct['Charity Impact'] = pt_acct['charity'] + pt_acct['rsv charity']
+            pt_acct['Denials Impact'] = pt_acct['denials'] + pt_acct['rsv denials']
+            pt_acct['Payments Impact'] = pt_acct['pay'] + pt_acct['rsv pay']
+            pt_acct['Initial valuation'] = pt_acct['rsv val']
+    
+    def apply_fully_reserved_themes(self, fully_rsv_accts: list[dict]) -> None:
+        for pt_acct in fully_rsv_accts:
+            pt_acct['Charges Impact'] = pt_acct['charges'] + pt_acct['rsv charges']
+            pt_acct['Admin Impact'] = pt_acct['admin'] + pt_acct['rsv admin']
+            pt_acct['BD Impact'] = pt_acct['bd'] + pt_acct['rsv bd']
+            pt_acct['Charity Impact'] = pt_acct['charity'] + pt_acct['rsv charity']
+            pt_acct['Denials Impact'] = pt_acct['denials'] + pt_acct['rsv denials']
+            pt_acct['Payments Impact'] = pt_acct['pay'] + pt_acct['rsv pay']
+            if pt_acct['pay'] < 0.0:
+                pt_acct['Payments Impact'] += (pt_acct['contra'] + pt_acct['rsv contra'])
+            else:
+                pt_acct['Charges Impact'] += (pt_acct['contra'] + pt_acct['rsv contra'])
 
-    def apply_debit_balance_themes(self, debit_balances: list[dict]) -> None:
-        for pt_acct in debit_balances:
+    def apply_partial_reserved_themes(self, part_rsv: list[dict]) -> None:
+        for pt_acct in part_rsv:
+            pt_acct['Charges Impact'] = pt_acct['charges'] + pt_acct['rsv charges']
+            pt_acct['Admin Impact'] = pt_acct['admin'] + pt_acct['rsv admin']
+            pt_acct['BD Impact'] = pt_acct['bd'] + pt_acct['rsv bd']
+            pt_acct['Charity Impact'] = pt_acct['charity'] + pt_acct['rsv charity']
+            pt_acct['Denials Impact'] = pt_acct['denials'] + pt_acct['rsv denials']
+            pt_acct['Payments Impact'] = pt_acct['pay'] + pt_acct['rsv pay']
+            if pt_acct['pay'] < 0.0:
+                pt_acct['Payments Impact'] += (pt_acct['contra'] + pt_acct['rsv contra'])
+            else:
+                pt_acct['Charges Impact'] += (pt_acct['contra'] + pt_acct['rsv contra'])
+            
+
+    def apply_credit_balance_themes(self, credit_bal_accts: list[dict]) -> None:
+        for pt_acct in credit_bal_accts:
             pt_acct['Admin Impact'] = pt_acct['admin'] + pt_acct['rsv admin']
             pt_acct['BD Impact'] = pt_acct['bd'] + pt_acct['rsv bd']
             pt_acct['Charity Impact'] = pt_acct['charity'] + pt_acct['rsv charity']
@@ -159,29 +204,42 @@ class ARAnalysisCompiler:
                 # charges and payments
                 pass
 
-    def apply_credit_balance_themes(self, credit_balances: list[dict]) -> None:
-        pass
-
     def apply_zero_balance_themes(self, zero_balances: list[dict]) -> None:
-        pass
+        for pt_acct in zero_balances:
+            pt_acct['Admin Impact'] = pt_acct['admin'] + pt_acct['rsv admin']
+            pt_acct['BD Impact'] = pt_acct['bd'] + pt_acct['rsv bd']
+            pt_acct['Charity Impact'] = pt_acct['charity'] + pt_acct['rsv charity']
+            pt_acct['Denials Impact'] = pt_acct['denials'] + pt_acct['rsv denials']
 
-    def write_to_file(self, output_file: str, debit_accts: list[dict], credit_accts: list[dict], zero_accts: list[dict]) -> None:
+    def write_to_file(self, output_file: str, new: list[dict], fully: list[dict], partial: list[dict], credit: list[dict], zero: list[dict]) -> None:
         descriptors = [
             {
-                'table_headers': [h for h in debit_accts[0].keys()],
-                'table_rows': debit_accts,
-                'table_name': 'DEBIT_BAL_ACCTS',
-                'sheet_name': 'Debit Bal Accts'
+                'table_headers': [h for h in new[0].keys()],
+                'table_rows': new,
+                'table_name': 'NEW_ACCTS',
+                'sheet_name': 'New Accts'
             },
             {
-                'table_headers': [h for h in credit_accts[0].keys()],
-                'table_rows': credit_accts,
+                'table_headers': [h for h in fully[0].keys()],
+                'table_rows': fully,
+                'table_name': 'FULLY_RSV_ACCTS',
+                'sheet_name': 'Fully Rsv Accts'
+            },
+            {
+                'table_headers': [h for h in partial[0].keys()],
+                'table_rows': partial,
+                'table_name': 'PART_RSV_ACCTS',
+                'sheet_name': 'Partial Rsv Accts'
+            },
+            {
+                'table_headers': [h for h in credit[0].keys()],
+                'table_rows': credit,
                 'table_name': 'CREDIT_BAL_ACCTS',
                 'sheet_name': 'Credit Bal Accts'
             },
             {
-                'table_headers': [h for h in zero_accts[0].keys()],
-                'table_rows': zero_accts,
+                'table_headers': [h for h in zero[0].keys()],
+                'table_rows': zero,
                 'table_name': 'ZERO_BAL_ACCTS',
                 'sheet_name': 'Zero Bal Accts'
             }
@@ -191,9 +249,11 @@ class ARAnalysisCompiler:
     def compile(self, facility_name: str, input_file: str, output_file: str) -> None:
         pt_accts = self.load_file(input_file)
         self.calculate_reserve_activity(pt_accts)
-        debit_accts, credit_accts, zero_accts = self.split_into_cagetories(pt_accts)
+        new, fully, partial, credit, zero = self.split_into_cagetories(pt_accts)
         del pt_accts
-        self.apply_debit_balance_themes(debit_accts)
-        self.apply_credit_balance_themes(credit_accts)
-        self.apply_zero_balance_themes(zero_accts)
-        self.write_to_file(output_file, debit_accts, credit_accts, zero_accts)
+        self.apply_new_account_themes(new)
+        self.apply_fully_reserved_themes(fully)
+        self.apply_partial_reserved_themes(partial)
+        self.apply_credit_balance_themes(credit)
+        self.apply_zero_balance_themes(zero)
+        self.write_to_file(output_file, new, fully, partial, credit, zero)
