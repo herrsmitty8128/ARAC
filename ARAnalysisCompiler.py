@@ -28,6 +28,9 @@ class ARAnalysisCompiler:
     def __init__(self):
         self.data = dict()
 
+    def currency(self, string: str) -> float:
+        return float(string.replace("-","0.0").replace("(","-").replace(",","").replace(")","").replace("$",""))
+
     def load_file(self, input_file: str) -> list[dict]:
         initial_rows = []
         with open(input_file, 'r', newline='') as f:
@@ -42,17 +45,17 @@ class ARAnalysisCompiler:
                     'end fc': row['Financial Class Ending'].strip(),
                     'beg date': row['ATB Date - Min'].strip(),
                     'end date': row['ATB Date - Max'].strip(),
-                    'beg bal': float(row['Beginning AR Balance'].strip()),
-                    'charges': float(row['Charges'].strip()),
-                    'admin': float(row['Admin'].strip()),
-                    'bd': float(row['Bad Debt'].strip()),
-                    'charity': float(row['Charity'].strip()),
-                    'contra': float(row['Contractuals'].strip()),
-                    'denials': float(row['Denials'].strip()),
-                    'pay': float(row['Payments'].strip()),
-                    'end bal': float(row['Ending AR Balance'].strip()),
-                    'rsv beg': -float(row['MRA - Estimated Reserve Beginning'].strip()),
-                    'rsv end': -float(row['MRA - Estimated Reserve Ending'].strip())
+                    'beg bal': self.currency(row['Beginning AR Balance'].strip()),
+                    'charges': self.currency(row['Charges'].strip()),
+                    'admin': self.currency(row['Admin'].strip()),
+                    'bd': self.currency(row['Bad Debt'].strip()),
+                    'charity': self.currency(row['Charity'].strip()),
+                    'contra': self.currency(row['Contractuals'].strip()),
+                    'denials': self.currency(row['Denials'].strip()),
+                    'pay': self.currency(row['Payments'].strip()),
+                    'end bal': self.currency(row['Ending AR Balance'].strip()),
+                    'rsv beg': -self.currency(row['MRA - Estimated Reserve Beginning'].strip()),
+                    'rsv end': -self.currency(row['MRA - Estimated Reserve Ending'].strip())
                 })
         return initial_rows
 
