@@ -42,7 +42,7 @@ def new_table(ws: Worksheet, table_headers: list[str], table_rows: list[dict], t
         showFirstColumn=False,
         showLastColumn=False,
         showRowStripes=True,
-        showColumnStripes=True
+        showColumnStripes=False
     )
 
     ws.add_table(table)
