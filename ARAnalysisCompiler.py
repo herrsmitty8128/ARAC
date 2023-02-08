@@ -48,20 +48,20 @@ class ARAnalysisCompiler:
                 if not self.end_date:
                     self.end_date = row['ATB Date - Max'].strip()
                 initial_rows.append({
-                    'number': int(row['Account Number'].strip()),
-                    'beg fc': row['Financial Class Beginning'].strip(),
-                    'end fc': row['Financial Class Ending'].strip(),
-                    'beg bal': self.currency(row['Beginning AR Balance'].strip()),
-                    'charges': self.currency(row['Charges'].strip()),
-                    'admin': self.currency(row['Admin'].strip()),
-                    'bd': self.currency(row['Bad Debt'].strip()),
-                    'charity': self.currency(row['Charity'].strip()),
-                    'contra': self.currency(row['Contractuals'].strip()),
-                    'denials': self.currency(row['Denials'].strip()),
-                    'pay': self.currency(row['Payments'].strip()),
-                    'end bal': self.currency(row['Ending AR Balance'].strip()),
-                    'rsv beg': -self.currency(row['MRA - Estimated Reserve Beginning'].strip()),
-                    'rsv end': -self.currency(row['MRA - Estimated Reserve Ending'].strip())
+                    'Number': int(row['Account Number'].strip()),
+                    'FC Beginning': row['Financial Class Beginning'].strip(),
+                    'FC Ending': row['Financial Class Ending'].strip(),
+                    'Begin Bal': self.currency(row['Beginning AR Balance'].strip()),
+                    'Charges': self.currency(row['Charges'].strip()),
+                    'Admin Adj': self.currency(row['Admin'].strip()),
+                    'Bad Debt WO': self.currency(row['Bad Debt'].strip()),
+                    'Charity Adj': self.currency(row['Charity'].strip()),
+                    'Contractual Adj': self.currency(row['Contractuals'].strip()),
+                    'Denial WO': self.currency(row['Denials'].strip()),
+                    'Receipts/Refunds': self.currency(row['Payments'].strip()),
+                    'Ending Bal': self.currency(row['Ending AR Balance'].strip()),
+                    'Rsv: Beginning': -self.currency(row['MRA - Estimated Reserve Beginning'].strip()),
+                    'Rsv: Ending': -self.currency(row['MRA - Estimated Reserve Ending'].strip())
                 })
         return initial_rows
 
@@ -71,15 +71,15 @@ class ARAnalysisCompiler:
         for pt in pt_accts:
 
             pt_running_bal = [
-                [0.0, pt['beg bal']],  # 0
-                [pt['charges'], 0.0],  # 1
-                [pt['admin'], 0.0],    # 2
-                [pt['bd'], 0.0],      # 3
-                [pt['charity'], 0.0],  # 4
-                [pt['contra'], 0.0],  # 5
-                [pt['denials'], 0.0],  # 6
-                [pt['pay'], 0.0],      # 7
-                [0.0, pt['end bal']],  # 8
+                [0.0, pt['Begin Bal']],      # 0
+                [pt['Charges'], 0.0],        # 1
+                [pt['Admin Adj'], 0.0],      # 2
+                [pt['Bad Debt WO'], 0.0],    # 3
+                [pt['Charity Adj'], 0.0],    # 4
+                [pt['Contractual Adj'], 0.0],  # 5
+                [pt['Denial WO'], 0.0],      # 6
+                [pt['Receipts/Refunds'], 0.0],  # 7
+                [0.0, pt['Ending Bal']],      # 8
             ]
 
             # update the patient account running balance in the second column of the table above
@@ -93,7 +93,7 @@ class ARAnalysisCompiler:
                 raise ValueError(f'Ending balance for patient {pt["number"]} does not recalculate.')
 
             rsv_running_bal = [
-                [0.0, pt['rsv beg']],  # 0 beginning balance
+                [0.0, pt['Rsv: Beginning']],  # 0 beginning balance
                 [0.0, 0.0],            # 1 charges
                 [0.0, 0.0],            # 2 admin
                 [0.0, 0.0],            # 3 bd
@@ -102,7 +102,7 @@ class ARAnalysisCompiler:
                 [0.0, 0.0],            # 6 denials
                 [0.0, 0.0],            # 7 releases
                 [0.0, 0.0],            # 8 valuation
-                [0.0, pt['rsv end']]  # 9 ending balance
+                [0.0, pt['Rsv: Ending']]  # 9 ending balance
             ]
 
             # update the running balance of the reserve in the second column of the table above
@@ -124,91 +124,70 @@ class ARAnalysisCompiler:
                 raise ValueError(f'Ending reserve balance for patient {pt["number"]} does not recalculate.')
 
             # add the reserve activity to the patient's record
-            pt['rsv charges'] = rsv_running_bal[1][0]
-            pt['rsv admin'] = rsv_running_bal[2][0]
-            pt['rsv bd'] = rsv_running_bal[3][0]
-            pt['rsv charity'] = rsv_running_bal[4][0]
-            pt['rsv contra'] = rsv_running_bal[5][0]
-            pt['rsv denials'] = rsv_running_bal[6][0]
-            pt['rsv release'] = rsv_running_bal[7][0]
-            pt['rsv val'] = rsv_running_bal[8][0]
+            pt['Rsv: Charges'] = rsv_running_bal[1][0]
+            pt['Rsv: Admin Adj'] = rsv_running_bal[2][0]
+            pt['Rsv: Bad Debt WO'] = rsv_running_bal[3][0]
+            pt['Rsv: Charity Adj'] = rsv_running_bal[4][0]
+            pt['Rsv: Contractual Adj'] = rsv_running_bal[5][0]
+            pt['Rsv: Denail WO'] = rsv_running_bal[6][0]
+            pt['Rsv: Releases'] = rsv_running_bal[7][0]
+            pt['Rsv: Valuation'] = rsv_running_bal[8][0]
 
-            if pt['rsv beg'] < 0.0 and pt['rsv end'] == 0.0 and pt['pay'] < 0.0 and pt['rsv val'] > 0.0:
-                pt['rsv release'] = pt['rsv val']
-                pt['rsv val'] = 0.0
+            if pt['Rsv: Beginning'] < 0.0 and pt['Rsv: Ending'] == 0.0 and pt['Receipts/Refunds'] < 0.0 and pt['Rsv: Valuation'] > 0.0:
+                pt['Rsv: Releases'] = pt['Rsv: Valuation']
+                pt['Rsv: Valuation'] = 0.0
 
         pass
 
-    def add_themes(self, pt_accts: list[dict]) -> tuple:
+    def add_descriptions(self, pt_accts: list[dict]) -> tuple:
 
         # group the accounts into three categories
         for pt_acct in pt_accts:
-            beg_bal = pt_acct['beg bal']
-            beg_rsv = pt_acct['rsv beg']
-            beg_net = beg_bal + beg_rsv
-            pay = pt_acct['pay']
-            chg = pt_acct['charges']
-            end_bal = pt_acct['end bal']
-            end_rsv = pt_acct['rsv end']
-            end_net = end_bal + end_rsv
 
-            if beg_net > 0.0:  # net debits
-                if chg > 0.0:
-                    if pay < 0.0:
-                        if abs(pay) >= beg_net + chg:
-                            if end_net > 0.0:
-                                pt_acct['Theme'] = 'Net debit accounts with net receipts > begin bal + charges resulting in a net debit ending balance.'
-                            elif end_net < 0.0:
-                                pt_acct['Theme'] = 'Net debitaccounts with net receipts > begin bal + charges resulting in a net credit ending balance.'
-                            else:
-                                pt_acct['Theme'] = 'Net debit accounts with net receipts > begin bal + charges resulting in a net zero ending balance.'
-                        else:
-                            if end_net > 0.0:
-                                pt_acct['Theme'] = 'Net debit accounts with net receipts < begin bal + charges resulting in a net debit ending balance.'
-                            elif end_net < 0.0:
-                                pt_acct['Theme'] = 'Net debit accounts with net receipts < begin bal + charges resulting in a net credit ending balance.'
-                            else:
-                                pt_acct['Theme'] = 'Net debit accounts with net receipts < begin bal + charges resulting in a net zero ending balance.'
-                    elif pay > 0.0:
-                        pt_acct['Theme'] = 'Net debit accounts with net refund'
-                    else:
-                        pt_acct['Theme'] = 'Net debit accounts - no cash activity.'
-                elif chg < 0.0:
-                    pt_acct['Theme'] = 'Net debit accounts with charge reversals.'
-                else:
-                    pt_acct['Theme'] = 'Net debit accounts without charges.'
+            bd = pt_acct['Bad Debt WO']
+            beg_rsv = pt_acct['Rsv: Beginning']
+            beg_net = pt_acct['Begin Bal'] + beg_rsv
+            pay = pt_acct['Receipts/Refunds']
+            chg = pt_acct['Charges']
+            end_net = pt_acct['Ending Bal'] + pt_acct['Rsv: Ending']
 
-            elif beg_net < 0.0:  # net credits
-                pt_acct['Theme'] = 'Net credit'
+            desc = ''
 
-            else:  # net 0.0
-                if beg_bal == 0.0 and pt_acct['beg fc'] == '':
-                    if chg > 0.0:
-                        if pay < 0.0:
-                            if abs(pay) >= chg:
-                                if end_net > 0.0:
-                                    pt_acct['Theme'] = 'New accounts with net receipts > charges resulting in a net debit ending balance.'
-                                elif end_net < 0.0:
-                                    pt_acct['Theme'] = 'New accounts with net receipts > charges resulting in a net credit ending balance.'
-                                else:
-                                    pt_acct['Theme'] = 'New accounts with net receipts > charges resulting in a net zero ending balance.'
-                            else:
-                                if end_net > 0.0:
-                                    pt_acct['Theme'] = 'New accounts with net receipts < charges resulting in a net debit ending balance.'
-                                elif end_net < 0.0:
-                                    pt_acct['Theme'] = 'New accounts with net receipts < charges resulting in a net credit ending balance.'
-                                else:
-                                    pt_acct['Theme'] = 'New accounts with net receipts < charges resulting in a net zero ending balance.'
-                        elif pay > 0.0:
-                            pt_acct['Theme'] = 'New accounts with net refund'
-                        else:
-                            pt_acct['Theme'] = 'New accounts - no cash activity.'
-                    elif chg < 0.0:
-                        pt_acct['Theme'] = 'New accounts with charge reversals.'
-                    else:
-                        pt_acct['Theme'] = 'New accounts without charges.'
-                else:
-                    pt_acct['Theme'] = 'Net zero - Other'
+            if beg_net > 0.0:
+                desc += 'Positive beginning NRV '
+            elif beg_net < 0.0:
+                desc += 'Negative beginning NRV '
+            else:
+                desc += 'Zero beginning NRV '
+
+            if chg > 0.0:
+                desc += 'having charges, '
+            elif chg < 0.0:
+                desc += 'having charge reversals, '
+            else:
+                desc += 'having charges, '
+
+            if bd > 0.0:
+                desc += 'bad debt reversal, '
+
+            if pay < 0.0:
+                desc += 'cash receipts'
+                if abs(pay) > (beg_net + chg + pt_acct['Rsv: Charges']):
+                    desc += ' in excess of beginning NRV + net charges'
+                desc += ', '
+            elif pay > 0.0:
+                desc += 'refunds, '
+            else:
+                desc += 'no cash activity, '
+
+            if end_net > 0.0:
+                desc += 'and ending in a debit NRV.'
+            elif end_net < 0.0:
+                desc += 'and ending in a credit NRV.'
+            else:
+                desc += 'and ending in a zero NRV.'
+
+            pt_acct['Description'] = desc
 
         pass
 
@@ -217,8 +196,8 @@ class ARAnalysisCompiler:
             {
                 'table_headers': [h for h in pt_accts[0].keys()],
                 'table_rows': pt_accts,
-                'table_name': 'PT_ACCTS',
-                'sheet_name': 'Pt Accts'
+                'table_name': 'PT_ACCT_ROLL',
+                'sheet_name': 'Pt Acct Roll-forward'
             }
         ]
         new_wb_with_tables(output_file, descriptors)
@@ -226,5 +205,5 @@ class ARAnalysisCompiler:
     def compile(self, facility_name: str, input_file: str, output_file: str) -> None:
         pt_accts = self.load_file(input_file)
         self.add_reserve_activity(pt_accts)
-        self.add_themes(pt_accts)
+        self.add_descriptions(pt_accts)
         self.write_to_file(output_file, pt_accts)
