@@ -42,7 +42,7 @@ class ARRollForwardCompiler:
     def load_file(self, input_file: str) -> list[dict]:
         with open(input_file, 'r', newline='') as f:
             reader = csv.DictReader(f)
-            if not ARAnalysisCompiler.headers.issubset(set(reader.fieldnames)):
+            if not ARRollForwardCompiler.headers.issubset(set(reader.fieldnames)):
                 raise ValueError('Input file does not have the correct column headers.')
             for row in reader:
                 if not self.facility:
