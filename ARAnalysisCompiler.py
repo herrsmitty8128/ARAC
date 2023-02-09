@@ -1,5 +1,6 @@
 
 import csv
+from datetime import datetime
 from SpreadsheetTools import new_wb_with_tables
 
 
@@ -29,13 +30,16 @@ class ARAnalysisCompiler:
         self.start_date = None
         self.end_date = None
         self.facility = None
-        self.data = dict()
+        self.pt_accts = dict()
+        pass
+
+    def date(self, string: str) -> datetime:
+        return datetime.strptime(string.strip(), '%m/%d/%Y')
 
     def currency(self, string: str) -> float:
-        return float(string.replace("-", "0.0").replace("(", "-").replace(",", "").replace(")", "").replace("$", ""))
+        return round(float(string.strip().replace("-", "0.0").replace("(", "-").replace(",", "").replace(")", "").replace("$", "")), 2)
 
     def load_file(self, input_file: str) -> list[dict]:
-        initial_rows = []
         with open(input_file, 'r', newline='') as f:
             reader = csv.DictReader(f)
             if not ARAnalysisCompiler.headers.issubset(set(reader.fieldnames)):
@@ -44,112 +48,72 @@ class ARAnalysisCompiler:
                 if not self.facility:
                     self.facility = row['Source Facility'].strip()
                 if not self.start_date:
-                    self.start_date = row['ATB Date - Min'].strip()
+                    self.start_date = self.date(row['ATB Date - Min'])
                 if not self.end_date:
-                    self.end_date = row['ATB Date - Max'].strip()
-                initial_rows.append({
-                    'Number': int(row['Account Number'].strip()),
-                    'FC Beginning': row['Financial Class Beginning'].strip(),
-                    'FC Ending': row['Financial Class Ending'].strip(),
-                    'Begin Bal': self.currency(row['Beginning AR Balance'].strip()),
-                    'Charges': self.currency(row['Charges'].strip()),
-                    'Admin Adj': self.currency(row['Admin'].strip()),
-                    'Bad Debt WO': self.currency(row['Bad Debt'].strip()),
-                    'Charity Adj': self.currency(row['Charity'].strip()),
-                    'Contractual Adj': self.currency(row['Contractuals'].strip()),
-                    'Denial WO': self.currency(row['Denials'].strip()),
-                    'Receipts/Refunds': self.currency(row['Payments'].strip()),
-                    'Ending Bal': self.currency(row['Ending AR Balance'].strip()),
-                    'Rsv: Beginning': -self.currency(row['MRA - Estimated Reserve Beginning'].strip()),
-                    'Rsv: Ending': -self.currency(row['MRA - Estimated Reserve Ending'].strip())
-                })
-        return initial_rows
-
-    def add_reserve_activity(self, pt_accts: list[dict]) -> None:
-
-        # iterate through all the patient accounts
-        for pt in pt_accts:
-
-            pt_running_bal = [
-                [0.0, pt['Begin Bal']],      # 0
-                [pt['Charges'], 0.0],        # 1
-                [pt['Admin Adj'], 0.0],      # 2
-                [pt['Bad Debt WO'], 0.0],    # 3
-                [pt['Charity Adj'], 0.0],    # 4
-                [pt['Contractual Adj'], 0.0],  # 5
-                [pt['Denial WO'], 0.0],      # 6
-                [pt['Receipts/Refunds'], 0.0],  # 7
-                [0.0, pt['Ending Bal']],      # 8
-            ]
-
-            # update the patient account running balance in the second column of the table above
-            for i in range(1, len(pt_running_bal) - 1):
-                pt_running_bal[i][1] = pt_running_bal[i - 1][1] + pt_running_bal[i][0]
-
-            # make sure that the ending balance recalculates
-            if round(pt_running_bal[7][1], 2) != round(pt_running_bal[8][1], 2):
-                for x in pt_running_bal:
-                    print(x[0], "\t", x[1])
-                raise ValueError(f'Ending balance for patient {pt["number"]} does not recalculate.')
-
-            rsv_running_bal = [
-                [0.0, pt['Rsv: Beginning']],  # 0 beginning balance
-                [0.0, 0.0],            # 1 charges
-                [0.0, 0.0],            # 2 admin
-                [0.0, 0.0],            # 3 bd
-                [0.0, 0.0],            # 4 charity
-                [0.0, 0.0],            # 5 contra
-                [0.0, 0.0],            # 6 denials
-                [0.0, 0.0],            # 7 releases
-                [0.0, 0.0],            # 8 valuation
-                [0.0, pt['Rsv: Ending']]  # 9 ending balance
-            ]
-
-            # update the running balance of the reserve in the second column of the table above
-            for i in range(1, len(pt_running_bal) - 1):
-                if i == 7:
-                    pass  # do nothing
-                elif pt_running_bal[i - 1][1] == 0.0:
-                    rsv_running_bal[i][0] = 0.0
-                else:
-                    rsv_running_bal[i][0] = round(pt_running_bal[i][0] / pt_running_bal[i - 1][1] * rsv_running_bal[i - 1][1], 2)
-                rsv_running_bal[i][1] = rsv_running_bal[i - 1][1] + rsv_running_bal[i][0]
-
-            # fix up the final valution located at index 8 of the table above
-            rsv_running_bal[8][0] = round(rsv_running_bal[9][1] - rsv_running_bal[7][1], 2)
-            rsv_running_bal[8][1] = round(rsv_running_bal[8][0] + rsv_running_bal[7][1], 2)
-
-            # make sure that the ending balance recalculates
-            if round(rsv_running_bal[8][1], 2) != round(rsv_running_bal[9][1], 2):
-                raise ValueError(f'Ending reserve balance for patient {pt["number"]} does not recalculate.')
-
-            # add the reserve activity to the patient's record
-            pt['Rsv: Charges'] = rsv_running_bal[1][0]
-            pt['Rsv: Admin Adj'] = rsv_running_bal[2][0]
-            pt['Rsv: Bad Debt WO'] = rsv_running_bal[3][0]
-            pt['Rsv: Charity Adj'] = rsv_running_bal[4][0]
-            pt['Rsv: Contractual Adj'] = rsv_running_bal[5][0]
-            pt['Rsv: Denail WO'] = rsv_running_bal[6][0]
-            pt['Rsv: Releases'] = rsv_running_bal[7][0]
-            pt['Rsv: Valuation'] = rsv_running_bal[8][0]
-
-            if pt['Rsv: Beginning'] < 0.0 and pt['Rsv: Ending'] == 0.0 and pt['Receipts/Refunds'] < 0.0 and pt['Rsv: Valuation'] > 0.0:
-                pt['Rsv: Releases'] = pt['Rsv: Valuation']
-                pt['Rsv: Valuation'] = 0.0
-
+                    self.end_date = self.date(row['ATB Date - Max'])
+                number = int(row['Account Number'].strip())
+                if self.pt_accts.get(number, None):
+                    raise ValueError(f'Patient account number {number} appears more than once in the input file.')
+                self.pt_accts[number] = {
+                    'Number': number,
+                    'FC Beginning': row['Financial Class Beginning'],
+                    'FC Ending': row['Financial Class Ending'],
+                    'Begin Bal': self.currency(row['Beginning AR Balance']),
+                    'Charges': self.currency(row['Charges']),
+                    'Admin Adj': self.currency(row['Admin']),
+                    'Bad Debt WO': self.currency(row['Bad Debt']),
+                    'Charity Adj': self.currency(row['Charity']),
+                    'Contractual Adj': self.currency(row['Contractuals']),
+                    'Denial WO': self.currency(row['Denials']),
+                    'Receipts/Refunds': self.currency(row['Payments']),
+                    'Ending Bal': self.currency(row['Ending AR Balance']),
+                    'Rsv: Begin Bal': -self.currency(row['MRA - Estimated Reserve Beginning']),
+                    'Rsv: Ending Bal': -self.currency(row['MRA - Estimated Reserve Ending'])
+                }
         pass
 
-    def add_descriptions(self, pt_accts: list[dict]) -> tuple:
+    def add_reserve_activity(self) -> None:
+
+        fields = ['Charges', 'Admin Adj', 'Bad Debt WO', 'Charity Adj', 'Contractual Adj', 'Denial WO']
+
+        for pt in self.pt_accts.values():
+
+            # initialize the cumulative balances
+            cum_acct_bal = pt['Begin Bal']
+            cum_rsv_bal = pt['Rsv: Begin Bal']
+
+            # calculate the reserve activity and add it to the patient account
+            for field in fields:
+                rsv_field = 'Rsv: ' + field
+                pt[rsv_field] = 0.0 if cum_acct_bal == 0.0 else round(pt[field] / cum_acct_bal * cum_rsv_bal, 2)
+                cum_acct_bal += pt[field]
+                cum_rsv_bal += pt[rsv_field]
+
+            # calculate the change in the reserve due the the month-end valuation
+            pt['Rsv: Releases'] = 0.0
+            pt['Rsv: Valuation'] = round(pt['Rsv: Ending Bal'] - cum_rsv_bal, 0)
+
+            # verify that the reserve rolls-forward correctly
+            if cum_rsv_bal + pt['Rsv: Valuation'] != pt['Rsv: Ending Bal']:
+                raise ValueError(f'Reserve activity does not roll-forward for patient {pt["Number"]}')
+
+            # relcassify the valuation amount if it is attributable to cash receipts
+            if pt['Rsv: Begin Bal'] < 0.0 and pt['Rsv: Ending Bal'] == 0.0 and pt['Receipts/Refunds'] < 0.0 and pt['Rsv: Valuation'] > 0.0:
+                pt['Rsv: Releases'] = pt['Rsv: Valuation']
+                pt['Rsv: Valuation'] = 0.0
+        pass
+
+    def add_descriptions(self) -> tuple:
 
         # group the accounts into three categories
-        for pt_acct in pt_accts:
+        for pt in self.pt_accts.values():
 
-            bd = pt_acct['Bad Debt WO']
-            beg_rsv = pt_acct['Rsv: Beginning']
-            beg_net = pt_acct['Begin Bal'] + beg_rsv
-            pay = pt_acct['Receipts/Refunds']
-            chg = pt_acct['Charges']
-            end_net = pt_acct['Ending Bal'] + pt_acct['Rsv: Ending']
+            bd = pt['Bad Debt WO']
+            beg_rsv = pt['Rsv: Begin Bal']
+            beg_net = pt['Begin Bal'] + beg_rsv
+            pay = pt['Receipts/Refunds']
+            chg = pt['Charges']
+            end_net = pt['Ending Bal'] + pt['Rsv: Ending Bal']
 
             desc = ''
 
@@ -172,7 +136,7 @@ class ARAnalysisCompiler:
 
             if pay < 0.0:
                 desc += 'cash receipts'
-                if abs(pay) > (beg_net + chg + pt_acct['Rsv: Charges']):
+                if abs(pay) > (beg_net + chg + pt['Rsv: Charges']):
                     desc += ' in excess of beginning NRV + net charges'
                 desc += ', '
             elif pay > 0.0:
@@ -187,23 +151,28 @@ class ARAnalysisCompiler:
             else:
                 desc += 'and ending in a zero NRV.'
 
-            pt_acct['Description'] = desc
+            pt['Description'] = desc
 
         pass
 
-    def write_to_file(self, output_file: str, pt_accts: list[dict]) -> None:
-        descriptors = [
-            {
-                'table_headers': [h for h in pt_accts[0].keys()],
-                'table_rows': pt_accts,
-                'table_name': 'PT_ACCT_ROLL',
-                'sheet_name': 'Pt Acct Roll-forward'
-            }
-        ]
-        new_wb_with_tables(output_file, descriptors)
+    def write_to_file(self, output_file: str) -> None:
+        headers = [h for h in self.pt_accts[next(iter(self.pt_accts))].keys()]
+        new_wb_with_tables(
+            output_file,
+            [
+                {
+                    'table_headers': headers,  # [h for h in self.pt_accts[0].keys()],
+                    'table_rows': self.pt_accts.values(),
+                    'table_name': 'PT_ACCT_ROLL',
+                    'sheet_name': 'Pt Acct Roll-forward'
+                }
+            ]
+        )
+        pass
 
     def compile(self, facility_name: str, input_file: str, output_file: str) -> None:
-        pt_accts = self.load_file(input_file)
-        self.add_reserve_activity(pt_accts)
-        self.add_descriptions(pt_accts)
-        self.write_to_file(output_file, pt_accts)
+        self.load_file(input_file)
+        self.add_reserve_activity()
+        self.add_descriptions()
+        self.write_to_file(output_file)
+        pass
