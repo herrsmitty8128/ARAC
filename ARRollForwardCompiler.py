@@ -4,7 +4,7 @@ from datetime import datetime
 from SpreadsheetTools import new_wb_with_tables
 
 
-class ARAnalysisCompiler:
+class ARRollForwardCompiler:
 
     headers = {
         'Source Facility',

@@ -1,5 +1,5 @@
 
-import ARAnalysisCompiler
+import ARRollForwardCompiler
 import argparse
 
 epilog = 'Thank you for using the ARAnalysisCompiler ("ARAC") Python Module!'
@@ -30,6 +30,6 @@ if __name__ == "__main__":
     else:
         raise ValueError('Expected -f [Facility name].')
 
-    compiler = ARAnalysisCompiler.ARAnalysisCompiler()
+    compiler = ARRollForwardCompiler.ARRollForwardCompiler()
 
     compiler.compile(facility_name, input_file, output_file)
