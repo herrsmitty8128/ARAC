@@ -56,8 +56,8 @@ class ARAnalysisCompiler:
                     raise ValueError(f'Patient account number {number} appears more than once in the input file.')
                 self.pt_accts[number] = {
                     'Number': number,
-                    'FC Beginning': row['Financial Class Beginning'],
-                    'FC Ending': row['Financial Class Ending'],
+                    'FC Beginning': row['Financial Class Beginning'].strip(),
+                    'FC Ending': row['Financial Class Ending'].strip(),
                     'Begin Bal': self.currency(row['Beginning AR Balance']),
                     'Charges': self.currency(row['Charges']),
                     'Admin Adj': self.currency(row['Admin']),
