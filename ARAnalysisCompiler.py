@@ -161,7 +161,7 @@ class ARAnalysisCompiler:
             output_file,
             [
                 {
-                    'table_headers': headers,  # [h for h in self.pt_accts[0].keys()],
+                    'table_headers': headers,
                     'table_rows': self.pt_accts.values(),
                     'table_name': 'PT_ACCT_ROLL',
                     'sheet_name': 'Pt Acct Roll-forward'
