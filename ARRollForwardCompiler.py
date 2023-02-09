@@ -101,6 +101,8 @@ class ARAnalysisCompiler:
             if pt['Rsv: Begin Bal'] < 0.0 and pt['Rsv: Ending Bal'] == 0.0 and pt['Receipts/Refunds'] < 0.0 and pt['Rsv: Valuation'] > 0.0:
                 pt['Rsv: Releases'] = pt['Rsv: Valuation']
                 pt['Rsv: Valuation'] = 0.0
+            
+            pt['NPSR Impact'] = ((pt['Ending Bal'] - pt['Receipts/Refunds']) - pt['Begin Bal']) + (pt['Rsv: Ending Bal'] - pt['Rsv: Begin Bal'])
         pass
 
     def add_descriptions(self) -> tuple:
